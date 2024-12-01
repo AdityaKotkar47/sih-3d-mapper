@@ -4,9 +4,10 @@ import { OrbitControls, Environment } from '@react-three/drei'
 import Model from './components/Model'
 import LoadingScreen from './components/LoadingScreen'
 import ModelSelector from './components/ModelSelector'
+import Toast from './components/Toast'
 import './App.css'
 
-function PointForm({ point, onSubmit, onClose }) {
+function PointForm({ point, onSubmit, onClose, isEditing }) {
   const [formData, setFormData] = useState({
     name: point?.name || '',
     description: point?.description || ''
@@ -52,17 +53,33 @@ function PointForm({ point, onSubmit, onClose }) {
 }
 
 function ExportButton({ points }) {
+  const [showToast, setShowToast] = useState(false)
+
   const handleExport = () => {
     const json = JSON.stringify(points, null, 2)
     navigator.clipboard.writeText(json)
-      .then(() => alert('Points data copied to clipboard!'))
+      .then(() => setShowToast(true))
       .catch(err => console.error('Failed to copy:', err))
   }
 
   return (
-    <button className="export-button" onClick={handleExport}>
-      Export Points
-    </button>
+    <>
+      <button className="export-button" onClick={handleExport}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export Points
+      </button>
+      {showToast && (
+        <Toast
+          message="Points data copied to clipboard!"
+          type="success"
+          onClose={() => setShowToast(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -96,6 +113,7 @@ function App() {
   const [showForm, setShowForm] = useState(false)
   const [modelUrl, setModelUrl] = useState(null)
   const [isPlacingPoint, setIsPlacingPoint] = useState(false)
+  const [editingPoint, setEditingPoint] = useState(null)
 
   const handleAddPoint = useCallback((position) => {
     const newPoint = {
@@ -110,9 +128,33 @@ function App() {
   }, [points])
 
   const handleFormSubmit = (pointData) => {
-    setPoints(prev => [...prev, pointData])
+    if (editingPoint) {
+      setPoints(prev => prev.map(p => 
+        p.id === editingPoint.id ? { ...pointData, id: p.id } : p
+      ))
+      setEditingPoint(null)
+    } else {
+      setPoints(prev => [...prev, pointData])
+    }
     setTempPoint(null)
     setShowForm(false)
+  }
+
+  const handleEditPoint = (point) => {
+    setEditingPoint(point)
+    setTempPoint(point)
+    setShowForm(true)
+  }
+
+  const handleDeletePoint = (point) => {
+    setPoints(prev => {
+      const filtered = prev.filter(p => p.id !== point.id)
+      // Reorder IDs
+      return filtered.map((p, index) => ({
+        ...p,
+        id: index + 1
+      }))
+    })
   }
 
   const handleModelSelect = (modelData) => {
@@ -138,8 +180,10 @@ function App() {
             onSubmit={handleFormSubmit}
             onClose={() => {
               setTempPoint(null)
+              setEditingPoint(null)
               setShowForm(false)
             }}
+            isEditing={!!editingPoint}
           />
         </div>
       )}
@@ -154,6 +198,8 @@ function App() {
             onProgress={setLoadingProgress}
             points={points}
             onAddPoint={handleAddPoint}
+            onEditPoint={handleEditPoint}
+            onDeletePoint={handleDeletePoint}
             isPlacingPoint={isPlacingPoint}
           />
           <OrbitControls 
