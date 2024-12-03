@@ -46,8 +46,10 @@ export default function ModelSelector({ onModelSelect }) {
               <line x1="12" y1="22.08" x2="12" y2="12"/>
             </svg>
           </div>
-          <h1>3D Point Mapper</h1>
-          <p>Upload your 3D model to start mapping points</p>
+          <div className="title-container">
+            <h1>3D Point Mapper</h1>
+            <p>Upload your 3D model to start mapping points</p>
+          </div>
         </div>
         
         <div className="tabs">
@@ -99,11 +101,13 @@ export default function ModelSelector({ onModelSelect }) {
                     <line x1="12" y1="3" x2="12" y2="15"/>
                   </svg>
                 </div>
-                <p className="drop-text">Drag & drop your GLB file here</p>
-                <span className="or-divider">or</span>
-                <label htmlFor="file-input" className="file-button">
-                  Choose File
-                </label>
+                <div className="drop-text-container">
+                  <p className="drop-text">Drag & drop your GLB file here</p>
+                  <span className="or-divider">or</span>
+                  <label htmlFor="file-input" className="file-button">
+                    Choose File
+                  </label>
+                </div>
               </div>
             </div>
           ) : (
@@ -279,26 +283,37 @@ export default function ModelSelector({ onModelSelect }) {
         }
 
         .upload-icon {
-          margin-bottom: 1.5rem;
           color: #666;
-          transition: color 0.3s;
+          transition: color 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          margin-bottom: 0.5rem;
         }
 
         .file-drop-zone:hover .upload-icon {
           color: #888;
+          transform: scale(1.05);
+        }
+
+        .drop-text-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+          width: 100%;
         }
 
         .drop-text {
           font-size: 1.1rem;
           color: #888;
-          margin-bottom: 1rem;
+          margin: 0;
+          text-align: center;
+          width: 100%;
         }
 
         .or-divider {
           display: block;
           color: #666;
-          margin: 1rem 0;
           font-size: 0.9rem;
+          margin: 0.5rem 0;
         }
 
         .file-button {
@@ -308,13 +323,16 @@ export default function ModelSelector({ onModelSelect }) {
           color: white;
           border-radius: 8px;
           cursor: pointer;
-          transition: all 0.3s;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           font-size: 1rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .file-button:hover {
           background: #444;
-          transform: translateY(-2px);
+          transform: translateY(-2px) scale(1.05);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .url-form {
@@ -358,6 +376,43 @@ export default function ModelSelector({ onModelSelect }) {
         .url-form button:hover {
           background: #444;
           transform: translateY(-2px);
+        }
+
+        .logo-section {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-bottom: 2.5rem;
+          text-align: center;
+        }
+
+        .title-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          width: 100%;
+        }
+
+        h1 {
+          font-size: 2rem;
+          font-weight: 600;
+          margin: 0;
+          background: linear-gradient(135deg, #ffffff 0%, #b3b3b3 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer 3s infinite linear;
+          text-align: center;
+          width: 100%;
+        }
+
+        p {
+          color: #888;
+          font-size: 1rem;
+          margin: 0;
+          text-align: center;
+          max-width: 80%;
+          line-height: 1.5;
         }
       `}</style>
     </div>
