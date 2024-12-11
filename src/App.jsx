@@ -10,21 +10,47 @@ import './App.css'
 function PointForm({ point, onSubmit, onClose, isEditing }) {
   const [formData, setFormData] = useState({
     name: point?.name || '',
-    description: point?.description || ''
+    description: point?.description || '',
+    image: point?.image || '',
+    tags: point?.tags || []
   })
+
+  const availableTags = [
+    'accommodation',
+    'seating',
+    'help',
+    'bridge',
+    'ticket',
+    'digital',
+    'shopping',
+    'food',
+    'storage',
+    'restroom'
+  ]
 
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit({
       ...point,
       name: formData.name,
-      description: formData.description
+      description: formData.description,
+      image: formData.image,
+      tags: formData.tags
     })
+  }
+
+  const handleTagToggle = (tag) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag) 
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }))
   }
 
   return (
     <div className="point-form">
-      <h3>Add Point</h3>
+      <h3>{isEditing ? 'Edit Point' : 'Add Point'}</h3>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Name:</label>
@@ -42,6 +68,30 @@ function PointForm({ point, onSubmit, onClose, isEditing }) {
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             required
           />
+        </div>
+        <div>
+          <label>Image URL:</label>
+          <input
+            type="url"
+            value={formData.image}
+            onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+            placeholder="https://example.com/image.jpg"
+          />
+        </div>
+        <div>
+          <label>Tags:</label>
+          <div className="tags-container">
+            {availableTags.map(tag => (
+              <button
+                type="button"
+                key={tag}
+                className={`tag-button ${formData.tags.includes(tag) ? 'active' : ''}`}
+                onClick={() => handleTagToggle(tag)}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="form-buttons">
           <button type="submit">Save</button>
@@ -188,8 +238,17 @@ function App() {
         </div>
       )}
       <Canvas
-        camera={{ position: [0, 2, 10], fov: 75 }}
+        camera={{ 
+          position: [0, 2, 10], 
+          fov: 60,
+          near: 0.1,
+          far: 5000
+        }}
         style={{ width: '100vw', height: '100vh' }}
+        gl={{ 
+          antialias: true,
+          preserveDrawingBuffer: true
+        }}
       >
         <Suspense fallback={null}>
           <Environment preset="city" />
@@ -205,8 +264,18 @@ function App() {
           <OrbitControls 
             enableDamping
             dampingFactor={0.05}
-            minDistance={5}
-            maxDistance={20}
+            minDistance={0.1}
+            maxDistance={5000}
+            enablePan={true}
+            panSpeed={2}
+            enableZoom={true}
+            zoomSpeed={1.2}
+            enableRotate={true}
+            rotateSpeed={1}
+            maxPolarAngle={Math.PI}
+            minPolarAngle={0}
+            maxAzimuthAngle={Infinity}
+            minAzimuthAngle={-Infinity}
           />
         </Suspense>
       </Canvas>

@@ -11,76 +11,86 @@ function useModelDownload(url) {
   const [model, setModel] = useState(null)
 
   useEffect(() => {
+    if (!url) return
+
     const loader = new GLTFLoader()
     
-    // Check cache first
-    caches.open(CACHE_KEY).then(async (cache) => {
-      try {
-        const cachedResponse = await cache.match(url)
-        if (cachedResponse) {
-          console.log('Loading model from cache...')
-          const blob = await cachedResponse.blob()
-          const arrayBuffer = await blob.arrayBuffer()
-          
-          loader.parse(arrayBuffer, '', 
-            (gltf) => {
-              setModel(gltf.scene)
-              setProgress(100)
-              console.log('Model loaded from cache!')
-            },
-            (error) => {
-              console.error('Error parsing cached model:', error)
-              loadFromNetwork()
-            }
-          )
-        } else {
-          loadFromNetwork()
+    loader.load(
+      url,
+      (gltf) => {
+        console.log('Model loaded successfully')
+        setModel(gltf.scene)
+        setProgress(100)
+      },
+      (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100)
+          setProgress(percent)
         }
-      } catch (error) {
-        console.error('Cache error:', error)
-        loadFromNetwork()
+      },
+      (error) => {
+        console.error('Model loading error:', error)
       }
-    })
-
-    function loadFromNetwork() {
-      console.log('Downloading model from network...')
-      loader.load(
-        url,
-        async (gltf) => {
-          setModel(gltf.scene)
-          setProgress(100)
-          console.log('Model loaded from network!')
-          
-          // Cache the model for future use
-          try {
-            const response = await fetch(url)
-            const cache = await caches.open(CACHE_KEY)
-            await cache.put(url, response)
-            console.log('Model cached successfully!')
-          } catch (error) {
-            console.error('Caching error:', error)
-          }
-        },
-        (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100)
-            setProgress(percent)
-          }
-        },
-        (error) => {
-          console.error('Model loading error:', error)
-          setProgress(0)
-        }
-      )
-    }
+    )
 
     return () => {
-      setProgress(0)
-      setModel(null)
+      if (model) {
+        model.traverse((child) => {
+          if (child.geometry) child.geometry.dispose()
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose())
+            } else {
+              child.material.dispose()
+            }
+          }
+        })
+      }
     }
   }, [url])
 
   return { progress, model }
+}
+
+function useModelBounds(model) {
+  const { camera, scene } = useThree()
+  
+  useEffect(() => {
+    if (model) {
+      // Create bounding box
+      const box = new THREE.Box3().setFromObject(model)
+      const size = box.getSize(new THREE.Vector3())
+      const center = box.getCenter(new THREE.Vector3())
+      
+      // Get the maximum dimension
+      const maxDim = Math.max(size.x, size.y, size.z)
+      
+      // Set camera properties
+      camera.near = maxDim * 0.001
+      camera.far = maxDim * 100
+      
+      // Position camera based on model size
+      const distance = maxDim * 2
+      camera.position.set(distance, distance / 2, distance)
+      camera.updateProjectionMatrix()
+      
+      // Center and scale model
+      model.position.copy(new THREE.Vector3(0, 0, 0))
+      model.position.sub(center)
+      
+      // Apply materials
+      model.traverse((child) => {
+        if (child.isMesh) {
+          child.material.roughness = 0.5
+          child.material.metalness = 0.5
+        }
+      })
+
+      // Update matrices
+      model.updateMatrix()
+      model.updateMatrixWorld(true)
+    }
+  }, [model, camera, scene])
 }
 
 function Label({ position, name, description, isSelected, onClick, onEdit, onDelete }) {
@@ -281,26 +291,12 @@ export default function Model({ modelUrl, onProgress, points = [], onAddPoint, i
   const modelRef = useRef()
 
   const { progress, model } = useModelDownload(modelUrl)
-
+  
   useEffect(() => {
     onProgress(progress)
   }, [progress, onProgress])
 
-  useEffect(() => {
-    if (model) {
-      // Center the model
-      const box = new THREE.Box3().setFromObject(model)
-      const center = box.getCenter(new THREE.Vector3())
-      model.position.sub(center)
-
-      model.traverse((child) => {
-        if (child.isMesh) {
-          child.material.roughness = 0.5
-          child.material.metalness = 0.5
-        }
-      })
-    }
-  }, [model])
+  useModelBounds(model)
 
   useFrame(() => {
     if (isPlacingPoint && model) {
@@ -337,7 +333,12 @@ export default function Model({ modelUrl, onProgress, points = [], onAddPoint, i
 
   return (
     <group ref={modelRef} onClick={handleClick}>
-      {model && <primitive object={model} scale={1} />}
+      {model && (
+        <primitive 
+          object={model} 
+          dispose={null}
+        />
+      )}
       {points.map((point, index) => (
         <Label
           key={point.id || index}
